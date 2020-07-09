@@ -7,13 +7,14 @@
     <parent>
         <groupId>com.codenjoy</groupId>
         <artifactId>games</artifactId>
-        <version>1.1.3</version>
+        <version>1.1.1</version>
     </parent>
 
     <artifactId>${module.name}-engine</artifactId>
 
     <properties>
         <module.name>battlecity</module.name>
+        <module.desc>battlecity.desc</module.desc>
     </properties>
 
     <repositories>
