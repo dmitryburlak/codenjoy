@@ -1,195 +1,75 @@
 package com.codenjoy.dojo.services.settings;
 
+/*-
+ * #%L
+ * Codenjoy - it's a dojo-like platform from developers to developers.
+ * %%
+ * Copyright (C) 2018 - 2021 Codenjoy
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-3.0.html>.
+ * #L%
+ */
+
 import com.codenjoy.dojo.client.TestGameSettings;
-import com.codenjoy.dojo.services.printer.*;
+import com.codenjoy.dojo.services.Dice;
+import com.codenjoy.dojo.services.printer.CharElements;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.stream.Collectors;
+
+import static com.codenjoy.dojo.services.settings.Chance.CHANCE_RESERVED;
+import static com.codenjoy.dojo.services.settings.ChanceTest.Elements.*;
+import static com.codenjoy.dojo.services.settings.ChanceTest.Keys.*;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
 
 public class ChanceTest {
 
     private TestGameSettings settings;
     private Chance chance;
+    private Dice dice;
 
     @Before
     public void setup() {
         settings = new TestGameSettings();
+        dice = mock(Dice.class);
     }
 
-    private int assertAxis(Chance chance, Elements elements) {
-        return (int) chance.axis().stream().filter(x -> x.equals(elements)).count();
+    private int axis(Elements elements) {
+        return (int) chance.axis().stream()
+                .filter(x -> x.equals(elements))
+                .count();
     }
 
-    private void givenChance() {
-        chance = new Chance();
-        chance.put(Elements.ONE, settings.integerValue(Keys.ONE));
-        chance.put(Elements.TWO, settings.integerValue(Keys.TWO));
-        chance.put(Elements.THREE, settings.integerValue(Keys.THREE));
-        chance.put(Elements.FOUR, settings.integerValue(Keys.FOUR));
-        chance.run();
-    }
-
-    // параметр "0" -> не участвует
-    // 50 + 10 = 60, 60 < 100
-    // 50 -> 50
-    // 10 -> 10
-    // -1 (1 шт) -> (100 - (sum = 60)) / 2 = 20
-    // axis.size() = 80
-    @Test
-    public void shouldFillAxisWithoutWalkingOnWater() {
-        //given
-        settings.integer(Keys.ONE, 50)
-                    .integer(Keys.TWO, 10)
-                    .integer(Keys.THREE, 0)
-                    .integer(Keys.FOUR, -1);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(80, chance.axis().size());
-        assertEquals(50, assertAxis(chance, Elements.ONE));
-        assertEquals(10, assertAxis(chance, Elements.TWO));
-        assertEquals(0, assertAxis(chance, Elements.THREE));
-        assertEquals(20, assertAxis(chance, Elements.FOUR));
-    }
-
-    // порядок ввода не имеет значения
-    @Test
-    public void shouldFillAxisWithoutImmortality() {
-        //given
-        settings.integer(Keys.ONE, 0)
-                .integer(Keys.TWO, -1)
-                .integer(Keys.THREE, 50)
-                .integer(Keys.FOUR, 10);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(80, chance.axis().size());
-        assertEquals(0, assertAxis(chance, Elements.ONE));
-        assertEquals(20, assertAxis(chance, Elements.TWO));
-        assertEquals(50, assertAxis(chance, Elements.THREE));
-        assertEquals(10, assertAxis(chance, Elements.FOUR));
-    }
-
-    @Test
-    public void shouldFillAxis_Two() {
-        //given
-        settings.integer(Keys.ONE, 0)
-                    .integer(Keys.TWO, 100)
-                    .integer(Keys.THREE, 0)
-                    .integer(Keys.FOUR, 0);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(100, chance.axis().size());
-        assertEquals(0, assertAxis(chance, Elements.ONE));
-        assertEquals(100, assertAxis(chance, Elements.TWO));
-        assertEquals(0, assertAxis(chance, Elements.THREE));
-        assertEquals(0, assertAxis(chance, Elements.FOUR));
-    }
-
-    @Test
-    public void shouldAxisIsEmpty() {
-        //given
-        settings.integer(Keys.ONE, 0)
-                .integer(Keys.TWO, 0)
-                .integer(Keys.THREE, 0)
-                .integer(Keys.FOUR, 0);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(0, chance.axis().size());
-    }
-
-    // параметр "-1" > 1
-    // -1 (4 шт) -> (100 - (sum = 0)) / countOfMinus (4) = 25
-    // axis.size() = 100
-    @Test
-    public void shouldFillAxisIfAllParametersMinus() {
-        //given
-        settings.integer(Keys.ONE, -1)
-                    .integer(Keys.TWO, -1)
-                    .integer(Keys.THREE, -1)
-                    .integer(Keys.FOUR, -1);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(100, chance.axis().size());
-        assertEquals(25, assertAxis(chance, Elements.ONE));
-        assertEquals(25, assertAxis(chance, Elements.TWO));
-        assertEquals(25, assertAxis(chance, Elements.THREE));
-        assertEquals(25, assertAxis(chance, Elements.FOUR));
-    }
-
-    // параметр "0" -> не участвует
-    // параметра "-1" нету
-    // 60 + 50 + 40 = 150, 150 > 100
-    // 60 -> 60 * 100 / 150 = 40
-    // 50 -> 50 * 100 / 150 = 33
-    // 40 -> 40 * 100 / 150 = 26
-    // axis.size() = 99
-    @Test
-    public void shouldFillAxisChangeParametersWithoutMinus() {
-        //given
-        settings.integer(Keys.ONE, 60)
-                .integer(Keys.TWO, 50)
-                .integer(Keys.THREE, 0)
-                .integer(Keys.FOUR, 40);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(99, chance.axis().size());
-        assertEquals(40, assertAxis(chance, Elements.ONE));
-        assertEquals(33, assertAxis(chance, Elements.TWO));
-        assertEquals(0, assertAxis(chance, Elements.THREE));
-        assertEquals(26, assertAxis(chance, Elements.FOUR));
-    }
-
-    // параметра "0" нету
-    // параметр "-1" (1 шт)
-    // 60 + 50 + 40 = 150, 150 > 100
-    // 60 -> 60 * (100 - 30) / 150 = 28
-    // 50 -> 50 * (100 - 30) / 150 = 23
-    // 40 -> 40 * (100 - 30) / 150 = 18
-    // -1 (1 шт) -> (100 - (sum = 69)) / 2 = 15
-    // axis.size() = 84
-    @Test
-    public void shouldFillAxisChangeParametersWithMinus() {
-        //given
-        settings.integer(Keys.ONE, 60)
-                .integer(Keys.TWO, 50)
-                .integer(Keys.THREE, -1)
-                .integer(Keys.FOUR, 40);
-
-        //when
-        givenChance();
-
-        //then
-        assertEquals(84, chance.axis().size());
-        assertEquals(28, assertAxis(chance, Elements.ONE));
-        assertEquals(23, assertAxis(chance, Elements.TWO));
-        assertEquals(15, assertAxis(chance, Elements.THREE));
-        assertEquals(18, assertAxis(chance, Elements.FOUR));
+    private void buildChance() {
+        chance = new Chance(dice, settings)
+            .put(ONE, FIRST)
+            .put(TWO, SECOND)
+            .put(THREE, THIRD)
+            .put(FOUR, FOURTH)
+            .run();
     }
 
     enum Elements implements CharElements {
 
-        ONE('1'),
-        TWO('2'),
-        THREE('3'),
-        FOUR('4'),
+        FIRST('1'),
+        SECOND('2'),
+        THIRD('3'),
+        FOURTH('4'),
         NONE(' ');
 
         final char ch;
@@ -209,7 +89,7 @@ public class ChanceTest {
         }
 
         public static Elements valueOf(char ch) {
-            for (Elements el : Elements.values()) {
+            for (Elements el : values()) {
                 if (el.ch == ch) {
                     return el;
                 }
@@ -236,5 +116,511 @@ public class ChanceTest {
         public String key() {
             return key;
         }
+    }
+
+    private void assertA(String expected) {
+        assertEquals(expected,
+                String.format(
+                        "ALL:    %s\n" +
+                        "FIRST:  %s\n" +
+                        "SECOND: %s\n" +
+                        "THIRD:  %s\n" +
+                        "FOURTH: %s\n",
+                        chance.axis().size(),
+                        axis(FIRST),
+                        axis(SECOND),
+                        axis(THIRD),
+                        axis(FOURTH)));
+    }
+
+    @Test
+    public void shouldFillAxis_withoutOne_withDefault_case1() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 50)
+                .integer(TWO, 10)
+                .integer(THREE, 0)
+                .integer(FOUR, -1);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    90\n" +
+                "FIRST:  50\n" +
+                "SECOND: 10\n" +
+                "THIRD:  0\n" +
+                "FOURTH: 30\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 50)
+                .integer(TWO, 10)
+                .integer(THREE, 0)
+                .integer(FOUR, -1)
+                .changed();
+
+    }
+
+    private SettingsReader<TestGameSettings> assertThat(TestGameSettings settings) {
+        TestGameSettings expected = spy(TestGameSettings.class);
+
+        when(expected.changed()).thenAnswer(inv -> {
+            assertEquals(toString(expected), toString(settings));
+            return true;
+        });
+
+        return expected;
+    }
+
+    private String toString(TestGameSettings settings) {
+        return settings.getParameters().stream()
+                .map(param -> String.format("%s: %s", param.getName(), param.getValue()))
+                .collect(Collectors.joining("\n"));
+    }
+
+    @Test
+    public void shouldFillAxis_withoutOne_withDefault_case2() {
+        // given
+        // порядок ввода не имеет значения
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, 50)
+                .integer(FOUR, 10);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    90\n" +
+                "FIRST:  0\n" +
+                "SECOND: 30\n" +
+                "THIRD:  50\n" +
+                "FOURTH: 10\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, 50)
+                .integer(FOUR, 10)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_onlyOneIsSet_withoutDefault() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 100)
+                .integer(THREE, 0)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    100\n" +
+                "FIRST:  0\n" +
+                "SECOND: 100\n" +
+                "THIRD:  0\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 100)
+                .integer(THREE, 0)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_noOneAreSet_withoutDefault() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 0)
+                .integer(THREE, 0)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    0\n" +
+                "FIRST:  0\n" +
+                "SECOND: 0\n" +
+                "THIRD:  0\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 0)
+                .integer(THREE, 0)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_withAllDefaults() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, -1)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, -1);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    28\n" +
+                "FIRST:  7\n" +
+                "SECOND: 7\n" +
+                "THIRD:  7\n" +
+                "FOURTH: 7\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, -1)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, -1)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_onlyOneDefaults() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, 0)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    30\n" +
+                "FIRST:  0\n" +
+                "SECOND: 30\n" +
+                "THIRD:  0\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, 0)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_onlyTwoDefaults() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    30\n" +
+                "FIRST:  0\n" +
+                "SECOND: 15\n" +
+                "THIRD:  15\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_onlyThreeDefaults() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, -1)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    30\n" +
+                "FIRST:  10\n" +
+                "SECOND: 10\n" +
+                "THIRD:  10\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, -1)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_withoutOne_withoutDefault() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 60)
+                .integer(TWO, 50)
+                .integer(THREE, 0)
+                .integer(FOUR, 40);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    99\n" +
+                "FIRST:  40\n" +
+                "SECOND: 33\n" +
+                "THIRD:  0\n" +
+                "FOURTH: 26\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 40)  // changed
+                .integer(TWO, 33)  // changed
+                .integer(THREE, 0)
+                .integer(FOUR, 26) // changed
+                .changed();
+    }
+
+    @Test
+    public void shouldFillAxis_allAreSet_withDefault() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 60)
+                .integer(TWO, 50)
+                .integer(THREE, -1)
+                .integer(FOUR, 40);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    99\n" +
+                "FIRST:  28\n" +
+                "SECOND: 23\n" +
+                "THIRD:  30\n" +
+                "FOURTH: 18\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 28)   // changed
+                .integer(TWO, 23)   // changed
+                .integer(THREE, -1)
+                .integer(FOUR, 18)  // changed
+                .changed();
+    }
+
+    @Test
+    public void shouldChangeAxisImmediately_whenChangeAnySetting() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 25)
+                .integer(TWO, 25)
+                .integer(THREE, 25)
+                .integer(FOUR, 25);
+
+        buildChance();
+
+        assertA("ALL:    100\n" +
+                "FIRST:  25\n" +
+                "SECOND: 25\n" +
+                "THIRD:  25\n" +
+                "FOURTH: 25\n");
+
+        // when
+        settings.integer(ONE, 0);
+
+        // then
+        assertA("ALL:    75\n" +
+                "FIRST:  0\n" +
+                "SECOND: 25\n" +
+                "THIRD:  25\n" +
+                "FOURTH: 25\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 25)
+                .integer(THREE, 25)
+                .integer(FOUR, 25)
+                .changed();
+
+        // when
+        settings.integer(TWO, 1)
+                .integer(THREE, 1);
+
+        // then
+        assertA("ALL:    27\n" +
+                "FIRST:  0\n" +
+                "SECOND: 1\n" +
+                "THIRD:  1\n" +
+                "FOURTH: 25\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 1)
+                .integer(THREE, 1)
+                .integer(FOUR, 25)
+                .changed();
+
+        // when
+        settings.integer(FOUR, -1);
+
+        // then
+        assertA("ALL:    32\n" +
+                "FIRST:  0\n" +
+                "SECOND: 1\n" +
+                "THIRD:  1\n" +
+                "FOURTH: 30\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, 1)
+                .integer(THREE, 1)
+                .integer(FOUR, -1)
+                .changed();
+    }
+
+    @Test
+    public void shouldFixSettings_ifSumIsMoreThan100() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 100)
+                .integer(TWO, 100)
+                .integer(THREE, 100)
+                .integer(FOUR, 100);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    100\n" +
+                "FIRST:  25\n" +
+                "SECOND: 25\n" +
+                "THIRD:  25\n" +
+                "FOURTH: 25\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 25)   // changed
+                .integer(TWO, 25)   // changed
+                .integer(THREE, 25) // changed
+                .integer(FOUR, 25)  // changed
+                .changed();
+    }
+
+    @Test
+    public void shouldChangeAxisImmediately_whenChangedReserved() {
+        // given
+        settings.integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    30\n" +
+                "FIRST:  0\n" +
+                "SECOND: 15\n" +
+                "THIRD:  15\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 30)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .changed();
+
+        // when
+        settings.integer(CHANCE_RESERVED, 50);
+
+        // then
+        assertA("ALL:    50\n" +
+                "FIRST:  0\n" +
+                "SECOND: 25\n" +
+                "THIRD:  25\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(CHANCE_RESERVED, 50)   // changed
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .changed();
+    }
+
+    @Test
+    public void shouldSetDefaultReserved_whenNotSet() {
+        // given
+        settings.integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0);
+
+        // when
+        buildChance();
+
+        // then
+        assertA("ALL:    30\n" +
+                "FIRST:  0\n" +
+                "SECOND: 15\n" +
+                "THIRD:  15\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .integer(CHANCE_RESERVED, 30)  // added to end
+                .changed();
+
+        // when
+        settings.integer(CHANCE_RESERVED, 50);
+
+        // then
+        assertA("ALL:    50\n" +
+                "FIRST:  0\n" +
+                "SECOND: 25\n" +
+                "THIRD:  25\n" +
+                "FOURTH: 0\n");
+
+        assertThat(settings)
+                .integer(ONE, 0)
+                .integer(TWO, -1)
+                .integer(THREE, -1)
+                .integer(FOUR, 0)
+                .integer(CHANCE_RESERVED, 50)  // changed
+                .changed();
     }
 }
